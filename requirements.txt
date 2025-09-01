@@ -1,0 +1,23 @@
+# Web framework and WebSocket support
+flask==2.3.2
+flask-socketio==5.3.4
+
+# IPFS client
+ipfshttpclient==0.7.0a1
+
+# Web scraping and data processing
+beautifulsoup4==4.12.2
+requests==2.31.0
+youtube_dl==2021.12.17
+
+# Cryptography for signing data
+cryptography==41.0.3
+
+# Twitter API client
+tweepy==4.14.0
+
+# Audio processing
+pydub==0.25.1
+
+# Speech recognition
+SpeechRecognition==3.10.0

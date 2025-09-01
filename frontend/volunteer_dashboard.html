@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Volunteer Dashboard | Lodestar</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --neutral: #6b7280;
+      --dark: #1f2937;
+      --light: #f9fafb;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+      --transition: all 0.2s ease;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      line-height: 1.6;
+      color: var(--dark);
+      background-color: var(--light);
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    h1 {
+      font-size: 2rem;
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .notification-badge {
+      position: relative;
+    }
+
+    .badge {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      background: var(--danger);
+      color: white;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: bold;
+    }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 25px;
+      margin-bottom: 30px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      padding: 25px;
+      border: 1px solid #e2e8f0;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .card-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--dark);
+    }
+
+    .status-indicator {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+
+    .status-running {
+      background: var(--success);
+    }
+
+    .status-stopped {
+      background: var(--danger);
+    }
+
+    .status-updating {
+      background: var(--warning);
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+    }
+
+    .metric {
+      text-align: center;
+      padding: 15px;
+      background: #f0f4ff;
+      border-radius: 8px;
+    }
+
+    .metric-value {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--primary);
+      margin: 10px 0;
+    }
+
+    .metric-label {
+      font-size: 0.9rem;
+      color: var(--neutral);
+    }
+
+    .chart-container {
+      height: 300px;
+      margin-top: 20px;
+    }
+
+    .notification-list {
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .notification-item {
+      padding: 15px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .notification-item:last-child {
+      border-bottom: none;
+    }
+
+    .notification-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .notification-title {
+      font-weight: 600;
+      color: var(--dark);
+    }
+
+    .notification-time {
+      font-size: 0.85rem;
+      color: var(--neutral);
+    }
+
+    .notification-content {
+      font-size: 0.95rem;
+      color: var(--dark);
+      line-height: 1.5;
+    }
+
+    .notification-unread {
+      background: #f0f4ff;
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .btn {
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: var(--transition);
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #1d4ed8;
+    }
+
+    .btn-secondary {
+      background: white;
+      color: var(--primary);
+      border: 1px solid #e2e8f0;
+    }
+
+    .btn-secondary:hover {
+      background: #f0f4ff;
+    }
+
+    .btn-success {
+      background: var(--success);
+      color: white;
+    }
+
+    .btn-success:hover {
+      background: #059669;
+    }
+
+    .btn-warning {
+      background: var(--warning);
+      color: white;
+    }
+
+    .btn-warning:hover {
+      background: #d97706;
+    }
+
+    .system-info {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    .info-item {
+      padding: 15px;
+      background: #f8fafc;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .info-label {
+      font-size: 0.9rem;
+      color: var(--neutral);
+      margin-bottom: 5px;
+    }
+
+    .info-value {
+      font-weight: 600;
+      color: var(--dark);
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 50px;
+      padding-top: 20px;
+      border-top: 1px solid #e2e8f0;
+      color: var(--neutral);
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 15px;
+      }
+      
+      header {
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
+      }
+      
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .metric-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .system-info {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Volunteer Dashboard</h1>
+    <div class="user-info">
+      <div class="notification-badge">
+        <button id="notifications-btn" class="btn btn-secondary">🔔 Notifications</button>
+        <span class="badge" id="notification-count">0</span>
+      </div>
+      <button id="logout-btn" class="btn btn-secondary">Logout</button>
+    </div>
+  </header>
+
+  <div class="dashboard-grid">
+    <!-- Crawler Status Card -->
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">Crawler Status</h2>
+        <div>
+          <span class="status-indicator status-running"></span>
+          <span id="crawler-status">Running</span>
+        </div>
+      </div>
+      <div class="metric-grid">
+        <div class="metric">
+          <div class="metric-value" id="uptime-hours">24</div>
+          <div class="metric-label">Hours Uptime</div>
+        </div>
+        <div class="metric">
+          <div class="metric-value" id="content-today">150</div>
+          <div class="metric-label">Content Today</div>
+        </div>
+        <div class="metric">
+          <div class="metric-value" id="total-content">12.5K</div>
+          <div class="metric-label">Total Content</div>
+        </div>
+        <div class="metric">
+          <div class="metric-value" id="error-count">2</div>
+          <div class="metric-label">Errors Today</div>
+        </div>
+      </div>
+      <div class="action-buttons">
+        <button id="start-crawler" class="btn btn-success">Start</button>
+        <button id="stop-crawler" class="btn btn-warning">Stop</button>
+        <button id="update-crawler" class="btn btn-primary">Update</button>
+      </div>
+    </div>
+
+    <!-- Performance Metrics Card -->
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">Performance Metrics</h2>
+      </div>
+      <div class="metric-grid">
+        <div class="metric">
+          <div class="metric-value" id="cpu-usage">25.5%</div>
+          <div class="metric-label">CPU Usage</div>
+        </div>
+        <div class="metric">
+          <div class="metric-value" id="memory-usage">128 MB</div>
+          <div class="metric-label">Memory Usage</div>
+        </div>
+        <div class="metric">
+          <div class="metric-value" id="network-usage">1.2 MB/s</div>
+          <div class="metric-label">Network Usage</div>
+        </div>
+        <div class="metric">
+          <div class="metric-value" id="uptime-percent">98.5%</div>
+          <div class="metric-label">Uptime %</div>
+        </div>
+      </div>
+      <div class="chart-container">
+        <canvas id="performance-chart"></canvas>
+      </div>
+    </div>
+
+    <!-- Content Statistics Card -->
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">Content Statistics</h2>
+      </div>
+      <div class="metric-grid">
+        <div class="metric">
+          <div class="metric-value" id="youtube-count">450</div>
+          <div class="metric-label">YouTube</div>
+        </div>
+        <div class="metric">
+          <div class="metric-value" id="twitter-count">320</div>
+          <div class="metric-label">Twitter</div>
+        </div>
+        <div class="metric">
+          <div class="metric-value" id="brave-count">280</div>
+          <div class="metric-label">Brave Search</div>
+        </div>
+        <div class="metric">
+          <div class="metric-value" id="other-count">150</div>
+          <div class="metric-label">Other Sources</div>
+        </div>
+      </div>
+      <div class="chart-container">
+        <canvas id="content-chart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- System Information Card -->
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">System Information</h2>
+    </div>
+    <div class="system-info">
+      <div class="info-item">
+        <div class="info-label">Operating System</div>
+        <div class="info-value" id="os-info">Windows 11</div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">CPU</div>
+        <div class="info-value" id="cpu-info">Intel i7-12700K</div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">Memory</div>
+        <div class="info-value" id="memory-info">32 GB</div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">Disk Space</div>
+        <div class="info-value" id="disk-info">1.5 TB Free</div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">Crawler Version</div>
+        <div class="info-value" id="version-info">1.2.3</div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">Last Seen</div>
+        <div class="info-value" id="last-seen">Just now</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notifications Card -->
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Notifications</h2>
+    </div>
+    <div class="notification-list" id="notification-list">
+      <!-- Notifications will be loaded here -->
+      <div class="notification-item">
+        <div class="notification-header">
+          <div class="notification-title">Welcome to Lodestar!</div>
+          <div class="notification-time">Just now</div>
+        </div>
+        <div class="notification-content">
+          Thank you for joining the Lodestar volunteer network. Your crawler is now running and collecting verified content.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <p>Lodestar Volunteer Dashboard</p>
+    <p>© 2025 Lodestar. All data is stored on IPFS for permanent public access.</p>
+  </footer>
+
+  <script>
+    class VolunteerDashboard {
+      constructor() {
+        this.apiEndpoint = '/api/volunteer';
+        this.token = localStorage.getItem('volunteer_token');
+        this.volunteerId = null;
+        this.performanceChart = null;
+        this.contentChart = null;
+        this.init();
+      }
+
+      init() {
+        if (!this.token) {
+          this.showLogin();
+          return;
+        }
+
+        this.loadProfile();
+        this.loadStatus();
+        this.loadMetrics();
+        this.loadContentStats();
+        this.loadNotifications();
+        this.setupEventListeners();
+        this.setupCharts();
+        this.setupHeartbeat();
+      }
+
+      showLogin() {
+        // In a real implementation, we would redirect to a login page
+        // For now, we'll just show an alert
+        alert('Please log in to access the volunteer dashboard');
+        window.location.href = '/volunteer.html';
+      }
+
+      async loadProfile() {
+        try {
+          const response = await fetch(`${this.apiEndpoint}/profile`, {
+            headers: {
+              'Authorization': `Bearer ${this.token}`
+            }
+          });
+
+          if (response.ok) {
+            const profile = await response.json();
+            this.volunteerId = profile.id;
+            document.title = `Volunteer Dashboard - ${profile.name}`;
+          } else {
+            this.showLogin();
+          }
+        } catch (error) {
+          console.error('Error loading profile:', error);
+        }
+      }
+
+      async loadStatus() {
+        try {
+          const response = await fetch(`${this.apiEndpoint}/status`, {
+            headers: {
+              'Authorization': `Bearer ${this.token}`
+            }
+          });
+
+          if (response.ok) {
+            const status = await response.json();
+            this.updateStatusDisplay(status);
+          }
+        } catch (error) {
+          console.error('Error loading status:', error);
+        }
+      }
+
+      updateStatusDisplay(status) {
+        document.getElementById('uptime-hours').textContent = Math.floor(status.uptime / 3600);
+        document.getElementById('content-today').textContent = status.content_collected.today;
+        document.getElementById('total-content').textContent = this.formatNumber(status.content_collected.total);
+        document.getElementById('error-count').textContent = status.errors.today;
+        document.getElementById('cpu-usage').textContent = `${status.performance.cpu_usage}%`;
+        document.getElementById('memory-usage').textContent = `${status.performance.memory_usage} MB`;
+        document.getElementById('network-usage').textContent = `${status.performance.network_usage} MB/s`;
+      }
+
+      async loadMetrics() {
+        try {
+          const response = await fetch(`${this.apiEndpoint}/metrics`, {
+            headers: {
+              'Authorization': `Bearer ${this.token}`
+            }
+          });
+
+          if (response.ok) {
+            const metrics = await response.json();
+            this.updateMetricsDisplay(metrics);
+          }
+        } catch (error) {
+          console.error('Error loading metrics:', error);
+        }
+      }
+
+      updateMetricsDisplay(metrics) {
+        document.getElementById('uptime-percent').textContent = `${metrics.metrics.uptime_percentage}%`;
+        // Update chart with metrics data
+        if (this.performanceChart) {
+          this.performanceChart.data.datasets[0].data = [
+            metrics.metrics.cpu_usage,
+            metrics.metrics.memory_usage,
+            metrics.metrics.average_response_time,
+            metrics.metrics.data_processed
+          ];
+          this.performanceChart.update();
+        }
+      }
+
+      async loadContentStats() {
+        try {
+          const response = await fetch(`${this.apiEndpoint}/content`, {
+            headers: {
+              'Authorization': `Bearer ${this.token}`
+            }
+          });
+
+          if (response.ok) {
+            const contentStats = await response.json();
+            this.updateContentStatsDisplay(contentStats);
+          }
+        } catch (error) {
+          console.error('Error loading content stats:', error);
+        }
+      }
+
+      updateContentStatsDisplay(stats) {
+        document.getElementById('youtube-count').textContent = stats.sources.youtube;
+        document.getElementById('twitter-count').textContent = stats.sources.twitter;
+        document.getElementById('brave-count').textContent = stats.sources.brave_search;
+        document.getElementById('other-count').textContent = stats.sources.other;
+
+        // Update chart with content data
+        if (this.contentChart) {
+          this.contentChart.data.datasets[0].data = [
+            stats.sources.youtube,
+            stats.sources.twitter,
+            stats.sources.brave_search,
+            stats.sources.other
+          ];
+          this.contentChart.update();
+        }
+      }
+
+      async loadNotifications() {
+        try {
+          const response = await fetch(`${this.apiEndpoint}/notifications`, {
+            headers: {
+              'Authorization': `Bearer ${this.token}`
+            }
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            this.displayNotifications(data.notifications);
+          }
+        } catch (error) {
+          console.error('Error loading notifications:', error);
+        }
+      }
+
+      displayNotifications(notifications) {
+        const notificationList = document.getElementById('notification-list');
+        const notificationCount = document.getElementById('notification-count');
+        
+        if (!notifications || notifications.length === 0) {
+          notificationList.innerHTML = '<div class="notification-item">No notifications</div>';
+          notificationCount.textContent = '0';
+          return;
+        }
+
+        // Count unread notifications
+        const unreadCount = notifications.filter(n => !n.read).length;
+        notificationCount.textContent = unreadCount > 0 ? unreadCount : '0';
+
+        // Display notifications
+        notificationList.innerHTML = '';
+        notifications.slice(0, 5).forEach(notification => {
+          const notificationItem = document.createElement('div');
+          notificationItem.className = `notification-item ${!notification.read ? 'notification-unread' : ''}`;
+          
+          const timeAgo = this.timeAgo(new Date(notification.timestamp));
+          
+          notificationItem.innerHTML = `
+            <div class="notification-header">
+              <div class="notification-title">${this.escapeHtml(notification.title || notification.type)}</div>
+              <div class="notification-time">${timeAgo}</div>
+            </div>
+            <div class="notification-content">
+              ${this.escapeHtml(notification.message || '')}
+            </div>
+          `;
+          
+          notificationList.appendChild(notificationItem);
+        });
+      }
+
+      setupEventListeners() {
+        document.getElementById('logout-btn').addEventListener('click', () => {
+          localStorage.removeItem('volunteer_token');
+          this.showLogin();
+        });
+
+        document.getElementById('start-crawler').addEventListener('click', () => {
+          this.startCrawler();
+        });
+
+        document.getElementById('stop-crawler').addEventListener('click', () => {
+          this.stopCrawler();
+        });
+
+        document.getElementById('update-crawler').addEventListener('click', () => {
+          this.updateCrawler();
+        });
+      }
+
+      setupCharts() {
+        // Performance chart
+        const performanceCtx = document.getElementById('performance-chart').getContext('2d');
+        this.performanceChart = new Chart(performanceCtx, {
+          type: 'bar',
+          data: {
+            labels: ['CPU Usage', 'Memory Usage', 'Response Time', 'Data Processed'],
+            datasets: [{
+              label: 'Performance Metrics',
+              data: [25.5, 128, 1.2, 250],
+              backgroundColor: [
+                'rgba(37, 99, 235, 0.7)',
+                'rgba(16, 185, 129, 0.7)',
+                'rgba(245, 158, 11, 0.7)',
+                'rgba(239, 68, 68, 0.7)'
+              ],
+              borderColor: [
+                'rgba(37, 99, 235, 1)',
+                'rgba(16, 185, 129, 1)',
+                'rgba(245, 158, 11, 1)',
+                'rgba(239, 68, 68, 1)'
+              ],
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: {
+                beginAtZero: true
+              }
+            }
+          }
+        });
+
+        // Content chart
+        const contentCtx = document.getElementById('content-chart').getContext('2d');
+        this.contentChart = new Chart(contentCtx, {
+          type: 'doughnut',
+          data: {
+            labels: ['YouTube', 'Twitter', 'Brave Search', 'Other'],
+            datasets: [{
+              data: [450, 320, 280, 150],
+              backgroundColor: [
+                'rgba(37, 99, 235, 0.7)',
+                'rgba(16, 185, 129, 0.7)',
+                'rgba(245, 158, 11, 0.7)',
+                'rgba(156, 163, 175, 0.7)'
+              ],
+              borderColor: [
+                'rgba(37, 99, 235, 1)',
+                'rgba(16, 185, 129, 1)',
+                'rgba(245, 158, 11, 1)',
+                'rgba(156, 163, 175, 1)'
+              ],
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false
+          }
+        });
+      }
+
+      setupHeartbeat() {
+        // Send heartbeat every 5 minutes
+        setInterval(() => {
+          this.sendHeartbeat();
+        }, 300000); // 5 minutes
+
+        // Send initial heartbeat
+        this.sendHeartbeat();
+      }
+
+      async sendHeartbeat() {
+        try {
+          await fetch(`${this.apiEndpoint}/heartbeat`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${this.token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              status: 'running',
+              timestamp: new Date().toISOString()
+            })
+          });
+        } catch (error) {
+          console.error('Error sending heartbeat:', error);
+        }
+      }
+
+      async startCrawler() {
+        // In a real implementation, this would start the crawler process
+        alert('Crawler started');
+        this.loadStatus();
+      }
+
+      async stopCrawler() {
+        // In a real implementation, this would stop the crawler process
+        alert('Crawler stopped');
+        this.loadStatus();
+      }
+
+      async updateCrawler() {
+        // In a real implementation, this would update the crawler
+        alert('Crawler update initiated');
+      }
+
+      formatNumber(num) {
+        if (num >= 1000000) {
+          return (num / 1000000).toFixed(1) + 'M';
+        }
+        if (num >= 1000) {
+          return (num / 1000).toFixed(1) + 'K';
+        }
+        return num;
+      }
+
+      timeAgo(date) {
+        const seconds = Math.floor((new Date() - date) / 1000);
+        
+        let interval = seconds / 31536000;
+        if (interval > 1) {
+          return Math.floor(interval) + " years ago";
+        }
+        
+        interval = seconds / 2592000;
+        if (interval > 1) {
+          return Math.floor(interval) + " months ago";
+        }
+        
+        interval = seconds / 86400;
+        if (interval > 1) {
+          return Math.floor(interval) + " days ago";
+        }
+        
+        interval = seconds / 3600;
+        if (interval > 1) {
+          return Math.floor(interval) + " hours ago";
+        }
+        
+        interval = seconds / 60;
+        if (interval > 1) {
+          return Math.floor(interval) + " minutes ago";
+        }
+        
+        return Math.floor(seconds) + " seconds ago";
+      }
+
+      escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      }
+    }
+
+    // Initialize dashboard when page loads
+    document.addEventListener('DOMContentLoaded', () => {
+      window.volunteerDashboard = new VolunteerDashboard();
+    });
+  </script>
+</body>
+</html>

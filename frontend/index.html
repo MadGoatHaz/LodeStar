@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lodestar - Truth Aggregator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --neutral: #6b7280;
+      --dark: #1f2937;
+      --light: #f9fafb;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+      --transition: all 0.2s ease;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      line-height: 1.6;
+      color: var(--dark);
+      background-color: var(--light);
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 40px;
+      padding-top: 20px;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 15px;
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    .subtitle {
+      font-size: 1.25rem;
+      color: var(--neutral);
+      max-width: 700px;
+      margin: 0 auto;
+    }
+
+    .connection-status {
+      font-size: 0.9rem;
+      padding: 5px 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+    }
+
+    .connection-status.connected {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--success);
+    }
+
+    .connection-status.disconnected {
+      background: rgba(239, 68, 68, 0.15);
+      color: var(--danger);
+    }
+
+    .search-container {
+      max-width: 600px;
+      margin: 0 auto 30px;
+      position: relative;
+    }
+
+    .search-box {
+      width: 100%;
+      padding: 12px 50px 12px 20px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-family: 'Inter', sans-serif;
+      font-size: 1rem;
+      transition: var(--transition);
+      min-height: 44px; /* Touch-friendly size */
+    }
+
+    .search-box:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+    }
+
+    .search-button {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+      color: var(--neutral);
+    }
+
+    .autocomplete-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 0 0 8px 8px;
+      max-height: 200px;
+      overflow-y: auto;
+      z-index: 1000;
+      display: none;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .autocomplete-item {
+      padding: 10px 15px;
+      cursor: pointer;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    .autocomplete-item:hover {
+      background: #f0f4ff;
+    }
+
+    .filter-controls {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin-bottom: 30px;
+      flex-wrap: wrap;
+    }
+
+    .filter-btn {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 12px 16px; /* Increased padding for touch */
+      cursor: pointer;
+      transition: var(--transition);
+      font-weight: 500;
+      min-height: 44px; /* Touch-friendly size */
+      min-width: 44px; /* Touch-friendly size */
+    }
+
+    .filter-btn.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    .truth-feed {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); /* Responsive grid */
+      gap: 25px;
+    }
+
+    .truth-card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      transition: var(--transition);
+      border: 1px solid #e2e8f0;
+      position: relative;
+      min-height: 200px; /* Minimum height for consistency */
+    }
+
+    .truth-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
+
+    .flag-button {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid #ef4444;
+      color: #ef4444;
+      border-radius: 4px;
+      padding: 10px 12px; /* Increased padding for touch */
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: bold;
+      z-index: 10;
+      min-height: 44px; /* Touch-friendly size */
+      min-width: 44px; /* Touch-friendly size */
+    }
+
+    .flag-button:hover {
+      background: rgba(239, 68, 68, 0.2);
+    }
+
+    .truth-header {
+      padding: 20px;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #f0f4ff;
+    }
+
+    .truth-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--primary);
+    }
+
+    .truth-status {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+
+    .status-verified {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--success);
+    }
+
+    .status-contradicted {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--warning);
+    }
+
+    .truth-content {
+      padding: 20px;
+      line-height: 1.7;
+    }
+
+    .truth-content p {
+      margin-bottom: 15px;
+    }
+
+    .source {
+      font-style: italic;
+      color: var(--neutral);
+      display: block;
+      margin-top: 15px;
+      font-size: 0.9rem;
+    }
+
+    .action-section {
+      background: #f8fafc;
+      padding: 15px 20px;
+      border-top: 1px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap; /* Allow wrapping on small screens */
+    }
+
+    .action-label {
+      font-weight: 500;
+      color: var(--primary);
+      margin-right: 10px;
+    }
+
+    .action-content {
+      font-weight: 500;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 50px;
+      padding-top: 20px;
+      border-top: 1px solid #e2e8f0;
+      color: var(--neutral);
+      font-size: 0.9rem;
+    }
+
+    .methodology {
+      background: #f0f4ff;
+      border-radius: 8px;
+      padding: 15px;
+      margin-top: 20px;
+      font-size: 0.9rem;
+    }
+
+    .flag-notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 15px 20px;
+      border-radius: 4px;
+      color: white;
+      font-weight: bold;
+      z-index: 10000;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      transform: translateX(100%);
+      transition: transform 0.3s ease;
+      min-height: 44px; /* Touch-friendly size */
+    }
+
+    .flag-notification.success {
+      background-color: #10b981;
+    }
+
+    .flag-notification.error {
+      background-color: #ef4444;
+    }
+
+    .pagination-controls {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin: 30px 0;
+      flex-wrap: wrap;
+    }
+
+    .pagination-controls button {
+      padding: 8px 16px;
+      border: 1px solid #e2e8f0;
+      border-radius: 4px;
+      background: white;
+      cursor: pointer;
+    }
+
+    .pagination-controls button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .pagination-controls span {
+      align-self: center;
+      padding: 0 15px;
+    }
+
+    .timeline-view {
+      display: none;
+      margin-top: 30px;
+      padding: 20px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .historical-panel, .filter-panel {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+      display: none;
+      box-shadow: var(--shadow);
+    }
+
+    /* Mobile-specific styles */
+    @media (max-width: 768px) {
+      body {
+        padding: 15px;
+      }
+      
+      h1 {
+        font-size: 2rem;
+      }
+      
+      .subtitle {
+        font-size: 1.1rem;
+      }
+      
+      .truth-feed {
+        grid-template-columns: 1fr;
+        gap: 20px;
+      }
+      
+      .truth-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+      }
+      
+      .truth-title {
+        font-size: 1.1rem;
+      }
+      
+      .filter-controls {
+        gap: 10px;
+      }
+      
+      .filter-btn {
+        padding: 10px 12px;
+        font-size: 0.9rem;
+      }
+      
+      .action-section {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+      }
+      
+      .action-label {
+        margin-right: 0;
+        margin-bottom: 5px;
+      }
+    }
+    
+    @media (max-width: 480px) {
+      body {
+        padding: 10px;
+      }
+      
+      h1 {
+        font-size: 1.75rem;
+      }
+      
+      .subtitle {
+        font-size: 1rem;
+      }
+      
+      .search-container {
+        margin-bottom: 20px;
+      }
+      
+      .search-box {
+        padding: 10px 40px 10px 15px;
+        font-size: 0.9rem;
+      }
+      
+      .filter-controls {
+        gap: 8px;
+      }
+      
+      .filter-btn {
+        padding: 8px 10px;
+        font-size: 0.85rem;
+      }
+      
+      .truth-card {
+        border-radius: 8px;
+      }
+      
+      .truth-header {
+        padding: 15px;
+      }
+      
+      .truth-content {
+        padding: 15px;
+      }
+      
+      .action-section {
+        padding: 12px 15px;
+      }
+    }
+
+    /* Enhanced mobile styles */
+    .mobile-device .truth-card {
+      transition: none; /* Disable transitions for better performance */
+    }
+    
+    .mobile-device .truth-card:hover {
+      transform: none; /* Disable hover effects on mobile */
+      box-shadow: var(--shadow);
+    }
+    
+    /* Larger touch targets */
+    .mobile-device .filter-btn,
+    .mobile-device .flag-button {
+      min-height: 48px;
+      min-width: 48px;
+    }
+    
+    /* Improved scrolling */
+    .mobile-device .truth-feed {
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    /* Prevent zoom on input focus */
+    .mobile-device input:focus,
+    .mobile-device textarea:focus,
+    .mobile-device select:focus {
+      font-size: 16px; /* Prevent iOS zoom */
+    }
+
+    @keyframes slideIn {
+      from { transform: translateX(100%); }
+      to { transform: translateX(0); }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Lodestar</h1>
+    <p class="subtitle">Aggregating verified political statements and actions to inform voters and prevent decisions against their interests</p>
+    
+    <div id="connection-status" class="connection-status disconnected">Disconnected</div>
+    
+    <div class="search-container">
+      <input type="text" class="search-box" placeholder="Search political statements...">
+      <button class="search-button">🔍</button>
+      <div class="autocomplete-dropdown"></div>
+    </div>
+    
+    <div class="filter-controls">
+      <button class="filter-btn active" data-filter="all">All Statements</button>
+      <button class="filter-btn" data-filter="verified">Verified Truth</button>
+      <button class="filter-btn" data-filter="contradicted">Contradicted Actions</button>
+      <button class="filter-btn" data-filter="historical">Historical Context</button>
+    </div>
+  </header>
+
+  <div class="truth-feed" id="truth-feed">
+    <!-- Truth entries will be dynamically loaded here -->
+    <div style="text-align: center; padding: 40px; grid-column: 1 / -1;">
+      <div style="font-size: 24px; margin-bottom: 10px;">🔍</div>
+      <div>Loading content...</div>
+    </div>
+  </div>
+
+  <div class="timeline-view">
+    <h3 style="margin-top: 0; color: var(--dark);">Historical Timeline</h3>
+    <div id="timeline-content" style="position: relative; padding: 20px 0;">
+      <!-- Timeline entries will be added here -->
+    </div>
+  </div>
+
+  <div class="pagination-controls">
+    <button id="prev-page">Previous</button>
+    <span id="page-info">Page 1</span>
+    <button id="next-page">Next</button>
+  </div>
+
+  <footer>
+    <p>Lodestar is a non-partisan project preserving democracy through verified truth</p>
+    <p>Data sources: Government press releases, fact-checking platforms, news archives</p>
+    <p>© 2025 Lodestar. All data is stored on IPFS for permanent public access.</p>
+  </footer>
+
+  <script src="js/verifier.js"></script>
+  <script src="js/realtime.js"></script>
+  <script src="js/moderation.js"></script>
+  <script src="js/mobile.js"></script>
+  <script src="js/search.js"></script>
+  <script src="js/historical.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Filter functionality (maintained for backward compatibility)
+      const filterButtons = document.querySelectorAll('.filter-btn');
+      const truthCards = document.querySelectorAll('.truth-card');
+      const contentFeed = document.getElementById('truth-feed');
+      const timelineView = document.querySelector('.timeline-view');
+      
+      filterButtons.forEach(button => {
+        button.addEventListener('click', () => {
+          filterButtons.forEach(btn => btn.classList.remove('active'));
+          button.classList.add('active');
+          
+          // Handle historical filter
+          const filter = button.getAttribute('data-filter');
+          if (filter === 'historical') {
+            timelineView.style.display = 'block';
+            contentFeed.style.display = 'none';
+            if (window.historicalInterface) {
+              window.historicalInterface.loadTimeline();
+            }
+          } else {
+            timelineView.style.display = 'none';
+            contentFeed.style.display = 'grid';
+            if (window.searchInterface) {
+              window.searchInterface.currentFilters = {};
+              window.searchInterface.executeSearch();
+            }
+          }
+        });
+      });
+      
+      console.log('Lodestar frontend loaded. Data will be fetched from IPFS.');
+    });
+  </script>
+</body>
+</html>

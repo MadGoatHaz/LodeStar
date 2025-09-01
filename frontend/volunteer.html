@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Volunteer Crawler | Lodestar</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #2563eb;
+      --success: #10b981;
+      --neutral: #6b7280;
+      --dark: #1f2937;
+      --light: #f9fafb;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Inter', sans-serif;
+      line-height: 1.6;
+      color: var(--dark);
+      background-color: var(--light);
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    header {
+      text-align: center;
+      margin-bottom: 40px;
+      padding-top: 20px;
+    }
+    
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 15px;
+      color: var(--primary);
+      font-weight: 600;
+    }
+    
+    .subtitle {
+      font-size: 1.25rem;
+      color: var(--neutral);
+      max-width: 700px;
+      margin: 0 auto;
+    }
+    
+    .card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      padding: 30px;
+      margin-bottom: 30px;
+    }
+    
+    .card h2 {
+      color: var(--primary);
+      margin-bottom: 20px;
+      font-size: 1.75rem;
+    }
+    
+    .step {
+      margin-bottom: 25px;
+    }
+    
+    .step-number {
+      display: inline-block;
+      width: 30px;
+      height: 30px;
+      background: var(--primary);
+      color: white;
+      border-radius: 50%;
+      text-align: center;
+      line-height: 30px;
+      margin-right: 15px;
+      font-weight: bold;
+    }
+    
+    .step h3 {
+      margin-bottom: 10px;
+      font-size: 1.25rem;
+    }
+    
+    pre {
+      background: #f0f4ff;
+      padding: 15px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-family: monospace;
+      margin: 15px 0;
+    }
+    
+    .key-warning {
+      background: #fff0f0;
+      border-left: 4px solid var(--danger);
+      padding: 15px;
+      border-radius: 0 4px 4px 0;
+      margin: 20px 0;
+    }
+    
+    footer {
+      text-align: center;
+      margin-top: 50px;
+      padding-top: 20px;
+      border-top: 1px solid #e2e8f0;
+      color: var(--neutral);
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Volunteer Crawler Program</h1>
+    <p class="subtitle">Help us gather verified truth by running your own Lodestar crawler</p>
+  </header>
+
+  <div class="card">
+    <h2>How to Become a Volunteer Crawler</h2>
+    
+    <div class="step">
+      <span class="step-number">1</span>
+      <h3>Generate Your Crawler Key Pair</h3>
+      <p>Run these commands on your volunteer machine:</p>
+      <pre>openssl genpkey -algorithm RSA -out crawler.key -pkeyopt rsa_keygen_bits:2048
+openssl rsa -pubout -in crawler.key -out crawler.pub</pre>
+      <div class="key-warning">
+        <strong>Important:</strong> Never share your <code>crawler.key</code> file. This is your private key and must be kept secret.
+      </div>
+    </div>
+    
+    <div class="step">
+      <span class="step-number">2</span>
+      <h3>Share Your Public Key</h3>
+      <p>Send the contents of your <code>crawler.pub</code> file to the Lodestar team for verification:</p>
+      <pre>cat crawler.pub</pre>
+      <p>Copy the entire output (including <code>-----BEGIN PUBLIC KEY-----</code> and <code>-----END PUBLIC KEY-----</code>) and submit it through our secure channel.</p>
+    </div>
+    
+    <div class="step">
+      <span class="step-number">3</span>
+      <h3>Install and Run the Crawler</h3>
+      <p>Install dependencies and run the crawler:</p>
+      <pre>pip install -r requirements.txt
+python crawler/crawler.py</pre>
+      <p>Your crawler will now collect and sign data, storing it directly on IPFS for verification by the main site.</p>
+    </div>
+    
+    <div class="step">
+      <span class="step-number">4</span>
+      <h3>Verification Process</h3>
+      <p>The main Lodestar site verifies all data using your public key. Only signed data from verified crawlers will appear on the site.</p>
+      <p><strong>Security Note:</strong> Data is signed before storage on IPFS, ensuring no modifications can occur after signing.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Security and Trust</h2>
+    <p>Our volunteer program maintains the highest security standards:</p>
+    
+    <ul style="margin-left: 20px; margin-top: 15px;">
+      <li><strong>Private Keys Stay Private:</strong> Your <code>crawler.key</code> never leaves your machine</li>
+      <li><strong>Public Keys Verified:</strong> Only keys on the official <code>trusted_keys.json</code> are accepted</li>
+      <li><strong>Signature Verification:</strong> All data is verified using cryptographic signatures</li>
+      <li><strong>No Central Authority:</strong> Data is stored on IPFS with no single point of failure</li>
+    </ul>
+    
+    <p>For more technical details on how verification works, see our <a href="to_research.md">implementation guide</a>.</p>
+  </div>
+
+  <footer>
+    <p>Lodestar is a non-partisan project preserving democracy through verified truth</p>
+    <p>© 2025 Lodestar. All data is stored on IPFS for permanent public access.</p>
+  </footer>
+</body>
+</html>

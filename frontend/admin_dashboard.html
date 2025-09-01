@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard | Lodestar</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --neutral: #6b7280;
+      --dark: #1f2937;
+      --light: #f9fafb;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+      --transition: all 0.2s ease;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      line-height: 1.6;
+      color: var(--dark);
+      background-color: var(--light);
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    h1 {
+      font-size: 2rem;
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 25px;
+      margin-bottom: 30px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      padding: 25px;
+      border: 1px solid #e2e8f0;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .card-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--dark);
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+    }
+
+    .metric {
+      text-align: center;
+      padding: 15px;
+      background: #f0f4ff;
+      border-radius: 8px;
+    }
+
+    .metric-value {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--primary);
+      margin: 10px 0;
+    }
+
+    .metric-label {
+      font-size: 0.9rem;
+      color: var(--neutral);
+    }
+
+    .chart-container {
+      height: 300px;
+      margin-top: 20px;
+    }
+
+    .crawler-list {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .crawler-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .crawler-item:last-child {
+      border-bottom: none;
+    }
+
+    .crawler-info {
+      flex: 1;
+    }
+
+    .crawler-name {
+      font-weight: 600;
+      color: var(--dark);
+      margin-bottom: 5px;
+    }
+
+    .crawler-status {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+
+    .status-active {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--success);
+    }
+
+    .status-inactive {
+      background: rgba(239, 68, 68, 0.15);
+      color: var(--danger);
+    }
+
+    .crawler-stats {
+      display: flex;
+      gap: 15px;
+      font-size: 0.9rem;
+      color: var(--neutral);
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .btn {
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: var(--transition);
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #1d4ed8;
+    }
+
+    .btn-secondary {
+      background: white;
+      color: var(--primary);
+      border: 1px solid #e2e8f0;
+    }
+
+    .btn-secondary:hover {
+      background: #f0f4ff;
+    }
+
+    .btn-success {
+      background: var(--success);
+      color: white;
+    }
+
+    .btn-success:hover {
+      background: #059669;
+    }
+
+    .btn-warning {
+      background: var(--warning);
+      color: white;
+    }
+
+    .btn-warning:hover {
+      background: #d97706;
+    }
+
+    .btn-danger {
+      background: var(--danger);
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #dc2626;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+      color: var(--dark);
+    }
+
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      font-family: 'Inter', sans-serif;
+      font-size: 1rem;
+    }
+
+    .form-group textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 50px;
+      padding-top: 20px;
+      border-top: 1px solid #e2e8f0;
+      color: var(--neutral);
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 15px;
+      }
+      
+      header {
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
+      }
+      
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .metric-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .crawler-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+      }
+      
+      .crawler-stats {
+        width: 100%;
+        justify-content: space-between;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Administrator Dashboard</h1>
+    <div class="user-info">
+      <button id="logout-btn" class="btn btn-secondary">Logout</button>
+    </div>
+  </header>
+
+  <div class="dashboard-grid">
+    <!-- Network Overview Card -->
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">Network Overview</h2>
+      </div>
+      <div class="metric-grid">
+        <div class="metric">
+          <div class="metric-value" id="total-volunteers">1,250</div>
+          <div class="metric-label">Total Volunteers</div>
+        </div>
+        <div class="metric">
+          <div class="metric-value" id="active-crawlers">1,180</div>
+          <div class="metric-label">Active Crawlers</div>
+        </div>
+        <div class="metric">
+          <div class="metric-value" id="content-today">187.5K</div>
+          <div class="metric-label">Content Today</div>
+        </div>
+        <div class="metric">
+          <div class="metric-value" id="errors-today">245</div>
+          <div class="metric-label">Errors Today</div>
+        </div>
+      </div>
+      <div class="action-buttons">
+        <button id="refresh-network" class="btn btn-primary">Refresh</button>
+        <button id="send-announcement" class="btn btn-warning">Send Announcement</button>
+      </div>
+    </div>
+
+    <!-- Performance Metrics Card -->
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">Network Performance</h2>
+      </div>
+      <div class="metric-grid">
+        <div class="metric">
+          <div class="metric-value" id="avg-uptime">85.5%</div>
+          <div class="metric-label">Avg. Uptime</div>
+        </div>
+        <div class="metric">
+          <div class="metric-value" id="avg-content">150</div>
+          <div class="metric-label">Avg. Content/Volunteer</div>
+        </div>
+        <div class="metric">
+          <div class="metric-value" id="error-rate">0.13%</div>
+          <div class="metric-label">Error Rate</div>
+        </div>
+        <div class="metric">
+          <div class="metric-value" id="response-time">1.2s</div>
+          <div class="metric-label">Avg. Response Time</div>
+        </div>
+      </div>
+      <div class="chart-container">
+        <canvas id="performance-chart"></canvas>
+      </div>
+    </div>
+
+    <!-- Load Distribution Card -->
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">Load Distribution</h2>
+      </div>
+      <div class="chart-container">
+        <canvas id="load-chart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Crawler Management Card -->
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Crawler Management</h2>
+    </div>
+    <div class="crawler-list" id="crawler-list">
+      <!-- Crawlers will be loaded here -->
+      <div class="crawler-item">
+        <div class="crawler-info">
+          <div class="crawler-name">Volunteer #12345</div>
+          <div class="crawler-status status-active">Active</div>
+        </div>
+        <div class="crawler-stats">
+          <span>12.5K content</span>
+          <span>95.2% uptime</span>
+        </div>
+        <div class="action-buttons">
+          <button class="btn btn-secondary btn-sm">Message</button>
+          <button class="btn btn-warning btn-sm">Suspend</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Send Announcement Modal -->
+  <div id="announcement-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div class="card" style="width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto;">
+      <div class="card-header">
+        <h2 class="card-title">Send Announcement</h2>
+      </div>
+      <div class="form-group">
+        <label for="announcement-title">Title</label>
+        <input type="text" id="announcement-title" placeholder="Announcement title">
+      </div>
+      <div class="form-group">
+        <label for="announcement-content">Content</label>
+        <textarea id="announcement-content" placeholder="Announcement content"></textarea>
+      </div>
+      <div class="action-buttons">
+        <button id="cancel-announcement" class="btn btn-secondary">Cancel</button>
+        <button id="send-announcement-btn" class="btn btn-primary">Send Announcement</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Message Volunteer Modal -->
+  <div id="message-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div class="card" style="width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto;">
+      <div class="card-header">
+        <h2 class="card-title">Send Message</h2>
+      </div>
+      <div class="form-group">
+        <label for="message-volunteer">Volunteer</label>
+        <select id="message-volunteer">
+          <option value="">Select a volunteer</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="message-subject">Subject</label>
+        <input type="text" id="message-subject" placeholder="Message subject">
+      </div>
+      <div class="form-group">
+        <label for="message-content">Content</label>
+        <textarea id="message-content" placeholder="Message content"></textarea>
+      </div>
+      <div class="action-buttons">
+        <button id="cancel-message" class="btn btn-secondary">Cancel</button>
+        <button id="send-message-btn" class="btn btn-primary">Send Message</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <p>Lodestar Administrator Dashboard</p>
+    <p>© 2025 Lodestar. All data is stored on IPFS for permanent public access.</p>
+  </footer>
+
+  <script>
+    class AdminDashboard {
+      constructor() {
+        this.apiEndpoint = '/api/admin';
+        this.token = localStorage.getItem('admin_token');
+        this.volunteers = [];
+        this.performanceChart = null;
+        this.loadChart = null;
+        this.init();
+      }
+
+      init() {
+        if (!this.token) {
+          this.showLogin();
+          return;
+        }
+
+        this.loadNetworkOverview();
+        this.loadPerformanceMetrics();
+        this.loadCrawlers();
+        this.setupEventListeners();
+        this.setupCharts();
+      }
+
+      showLogin() {
+        // In a real implementation, we would redirect to a login page
+        // For now, we'll just show an alert
+        alert('Please log in to access the admin dashboard');
+        window.location.href = '/admin_login.html';
+      }
+
+      async loadNetworkOverview() {
+        try {
+          const response = await fetch(`${this.apiEndpoint}/network`, {
+            headers: {
+              'Authorization': `Bearer ${this.token}`
+            }
+          });
+
+          if (response.ok) {
+            const overview = await response.json();
+            this.updateNetworkOverview(overview);
+          }
+        } catch (error) {
+          console.error('Error loading network overview:', error);
+        }
+      }
+
+      updateNetworkOverview(overview) {
+        document.getElementById('total-volunteers').textContent = this.formatNumber(overview.total_volunteers);
+        document.getElementById('active-crawlers').textContent = this.formatNumber(overview.active_crawlers);
+        document.getElementById('content-today').textContent = this.formatNumber(overview.content_collected_today);
+        document.getElementById('errors-today').textContent = overview.errors_today;
+        document.getElementById('avg-uptime').textContent = `${overview.average_uptime}%`;
+      }
+
+      async loadPerformanceMetrics() {
+        try {
+          const response = await fetch(`${this.apiEndpoint}/metrics`, {
+            headers: {
+              'Authorization': `Bearer ${this.token}`
+            }
+          });
+
+          if (response.ok) {
+            const metrics = await response.json();
+            this.updatePerformanceMetrics(metrics);
+          }
+        } catch (error) {
+          console.error('Error loading performance metrics:', error);
+        }
+      }
+
+      updatePerformanceMetrics(metrics) {
+        document.getElementById('avg-content').textContent = metrics.total_content_collected / metrics.average_content_per_crawler;
+        document.getElementById('error-rate').textContent = `${metrics.error_rate}%`;
+        document.getElementById('response-time').textContent = `${metrics.performance_trends.network_usage[metrics.performance_trends.network_usage.length - 1]}s`;
+
+        // Update charts
+        if (this.performanceChart) {
+          this.performanceChart.data.datasets[0].data = metrics.performance_trends.cpu_usage;
+          this.performanceChart.update();
+        }
+
+        if (this.loadChart) {
+          // This would be updated with actual load distribution data
+        }
+      }
+
+      async loadCrawlers() {
+        try {
+          const response = await fetch(`${this.apiEndpoint}/crawlers`, {
+            headers: {
+              'Authorization': `Bearer ${this.token}`
+            }
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            this.volunteers = data.crawlers;
+            this.displayCrawlers(data.crawlers);
+          }
+        } catch (error) {
+          console.error('Error loading crawlers:', error);
+        }
+      }
+
+      displayCrawlers(crawlers) {
+        const crawlerList = document.getElementById('crawler-list');
+        
+        if (!crawlers || crawlers.length === 0) {
+          crawlerList.innerHTML = '<div class="crawler-item">No crawlers found</div>';
+          return;
+        }
+
+        crawlerList.innerHTML = '';
+        crawlers.slice(0, 10).forEach(crawler => {
+          const crawlerItem = document.createElement('div');
+          crawlerItem.className = 'crawler-item';
+          
+          const statusClass = crawler.status === 'active' ? 'status-active' : 'status-inactive';
+          const statusText = crawler.status === 'active' ? 'Active' : 'Inactive';
+          
+          crawlerItem.innerHTML = `
+            <div class="crawler-info">
+              <div class="crawler-name">${this.escapeHtml(crawler.name || `Volunteer #${crawler.volunteer_id.substring(0, 8)}`)}</div>
+              <div class="crawler-status ${statusClass}">${statusText}</div>
+            </div>
+            <div class="crawler-stats">
+              <span>${this.formatNumber(crawler.content_collected)} content</span>
+              <span>${crawler.uptime_percentage}% uptime</span>
+            </div>
+            <div class="action-buttons">
+              <button class="btn btn-secondary btn-sm" data-volunteer-id="${crawler.volunteer_id}">Message</button>
+              <button class="btn btn-warning btn-sm" data-volunteer-id="${crawler.volunteer_id}">Suspend</button>
+            </div>
+          `;
+          
+          crawlerList.appendChild(crawlerItem);
+        });
+
+        // Add event listeners to message buttons
+        crawlerList.querySelectorAll('.btn-secondary').forEach(button => {
+          button.addEventListener('click', (e) => {
+            const volunteerId = e.target.getAttribute('data-volunteer-id');
+            this.showMessageModal(volunteerId);
+          });
+        });
+      }
+
+      setupEventListeners() {
+        document.getElementById('logout-btn').addEventListener('click', () => {
+          localStorage.removeItem('admin_token');
+          this.showLogin();
+        });
+
+        document.getElementById('refresh-network').addEventListener('click', () => {
+          this.loadNetworkOverview();
+          this.loadPerformanceMetrics();
+          this.loadCrawlers();
+        });
+
+        document.getElementById('send-announcement').addEventListener('click', () => {
+          this.showAnnouncementModal();
+        });
+
+        document.getElementById('cancel-announcement').addEventListener('click', () => {
+          this.hideAnnouncementModal();
+        });
+
+        document.getElementById('send-announcement-btn').addEventListener('click', () => {
+          this.sendAnnouncement();
+        });
+
+        document.getElementById('cancel-message').addEventListener('click', () => {
+          this.hideMessageModal();
+        });
+
+        document.getElementById('send-message-btn').addEventListener('click', () => {
+          this.sendMessage();
+        });
+      }
+
+      setupCharts() {
+        // Performance chart
+        const performanceCtx = document.getElementById('performance-chart').getContext('2d');
+        this.performanceChart = new Chart(performanceCtx, {
+          type: 'line',
+          data: {
+            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+            datasets: [{
+              label: 'CPU Usage',
+              data: [22.5, 24.1, 25.5, 23.8, 26.2],
+              borderColor: 'rgba(37, 99, 235, 1)',
+              backgroundColor: 'rgba(37, 99, 235, 0.1)',
+              tension: 0.4
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: {
+                beginAtZero: true
+              }
+            }
+          }
+        });
+
+        // Load distribution chart
+        const loadCtx = document.getElementById('load-chart').getContext('2d');
+        this.loadChart = new Chart(loadCtx, {
+          type: 'doughnut',
+          data: {
+            labels: ['YouTube', 'Twitter', 'Brave Search', 'Other'],
+            datasets: [{
+              data: [35, 25, 20, 20],
+              backgroundColor: [
+                'rgba(37, 99, 235, 0.7)',
+                'rgba(16, 185, 129, 0.7)',
+                'rgba(245, 158, 11, 0.7)',
+                'rgba(156, 163, 175, 0.7)'
+              ],
+              borderColor: [
+                'rgba(37, 99, 235, 1)',
+                'rgba(16, 185, 129, 1)',
+                'rgba(245, 158, 11, 1)',
+                'rgba(156, 163, 175, 1)'
+              ],
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false
+          }
+        });
+      }
+
+      showAnnouncementModal() {
+        document.getElementById('announcement-modal').style.display = 'flex';
+      }
+
+      hideAnnouncementModal() {
+        document.getElementById('announcement-modal').style.display = 'none';
+        document.getElementById('announcement-title').value = '';
+        document.getElementById('announcement-content').value = '';
+      }
+
+      showMessageModal(volunteerId) {
+        // Populate volunteer dropdown
+        const volunteerSelect = document.getElementById('message-volunteer');
+        volunteerSelect.innerHTML = '<option value="">Select a volunteer</option>';
+        
+        this.volunteers.forEach(volunteer => {
+          const option = document.createElement('option');
+          option.value = volunteer.volunteer_id;
+          option.textContent = volunteer.name || `Volunteer #${volunteer.volunteer_id.substring(0, 8)}`;
+          if (volunteer.volunteer_id === volunteerId) {
+            option.selected = true;
+          }
+          volunteerSelect.appendChild(option);
+        });
+        
+        document.getElementById('message-modal').style.display = 'flex';
+      }
+
+      hideMessageModal() {
+        document.getElementById('message-modal').style.display = 'none';
+        document.getElementById('message-subject').value = '';
+        document.getElementById('message-content').value = '';
+      }
+
+      async sendAnnouncement() {
+        const title = document.getElementById('announcement-title').value;
+        const content = document.getElementById('announcement-content').value;
+        
+        if (!title || !content) {
+          alert('Please fill in all fields');
+          return;
+        }
+        
+        try {
+          const response = await fetch(`${this.apiEndpoint}/announcements`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${this.token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ title, content })
+          });
+          
+          if (response.ok) {
+            alert('Announcement sent successfully');
+            this.hideAnnouncementModal();
+          } else {
+            alert('Error sending announcement');
+          }
+        } catch (error) {
+          console.error('Error sending announcement:', error);
+          alert('Error sending announcement');
+        }
+      }
+
+      async sendMessage() {
+        const volunteerId = document.getElementById('message-volunteer').value;
+        const subject = document.getElementById('message-subject').value;
+        const content = document.getElementById('message-content').value;
+        
+        if (!volunteerId || !subject || !content) {
+          alert('Please fill in all fields');
+          return;
+        }
+        
+        try {
+          const response = await fetch(`${this.apiEndpoint}/messages`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${this.token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ volunteer_id: volunteerId, subject, content })
+          });
+          
+          if (response.ok) {
+            alert('Message sent successfully');
+            this.hideMessageModal();
+          } else {
+            alert('Error sending message');
+          }
+        } catch (error) {
+          console.error('Error sending message:', error);
+          alert('Error sending message');
+        }
+      }
+
+      formatNumber(num) {
+        if (num >= 1000000) {
+          return (num / 1000000).toFixed(1) + 'M';
+        }
+        if (num >= 1000) {
+          return (num / 1000).toFixed(1) + 'K';
+        }
+        return num;
+      }
+
+      escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      }
+    }
+
+    // Initialize dashboard when page loads
+    document.addEventListener('DOMContentLoaded', () => {
+      window.adminDashboard = new AdminDashboard();
+    });
+  </script>
+</body>
+</html>
