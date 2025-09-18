@@ -140,6 +140,34 @@ For questions, suggestions, or support, please open an issue on GitHub.
 
 ## How LodeStar Works: A Decentralized Truth Network
 
+## How LodeStar Works: A Decentralized Truth Network
+
+```mermaid
+graph TD
+    A[Volunteer Crawler] -->|Collects data from<br>YouTube, Twitter, etc.| B[Signs data with private key]
+    B -->|Stores signed data on IPFS| C[IPFS Network]
+    C -->|Retrieves data| G[Frontend Website]
+    G[Frontend Website] -->|Verifies signature using WebCrypto and trusted keys from /api/trusted_keys| G[Frontend Website]
+    G -->|Broadcasts verified content| H[Informed Citizens]
+    G -->|Users submit flags| I[Flagging Service]
+    I -->|Moderators review| J[Moderation Queue]
+    J -->|Approve/reject flags| K[Update Verification Status]
+    K --> G
+    G -->|Users can opt in to contribute| L[Lightweight Browser Crawler]
+    L -->|Runs in browser| M[Contributes to verification]
+    M --> C
+    
+    style A fill:#003366,stroke:#0055aa,color:#ffffff
+    style B fill:#003366,stroke:#0055aa,color:#ffffff
+    style C fill:#1a3a66,stroke:#2a4a88,color:#ffffff
+    style G fill:#003366,stroke:#0055aa,color:#ffffff
+    style H fill:#003366,stroke:#0055aa,color:#ffffff
+    style I fill:#800000,stroke:#a00000,color:#ffffff
+    style J fill:#800000,stroke:#a00000,color:#ffffff
+    style K fill:#800000,stroke:#a00000,color:#ffffff
+    style L fill:#003366,stroke:#0055aa,color:#ffffff
+    style M fill:#003366,stroke:#0055aa,color:#ffffff
+```
 ```mermaid
 graph TD
     A[Volunteer Crawler] -->|Collects data from<br>YouTube, Twitter, etc.| B[Signs data with private key]
