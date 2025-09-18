@@ -70,35 +70,35 @@ See `frontend/volunteer.html` for detailed instructions on becoming a volunteer 
 ## Installation and Setup
 
 1. Install the required dependencies:
-   ```
-   pip install -r requirements.txt
-   ```
+    ```
+    pip install -r requirements.txt
+    ```
 
 2. Install IPFS:
-   - Download and install IPFS Desktop from https://ipfs.tech/
-   - Or install IPFS command-line tools from https://dist.ipfs.tech/#kubo
+    - Download and install IPFS Desktop from https://ipfs.tech/
+    - Or install IPFS command-line tools from https://dist.ipfs.tech/#kubo
 
 3. Start the IPFS daemon:
-   ```
-   ipfs daemon
-   ```
+    ```
+    ipfs daemon
+    ```
 
 4. Add trusted public keys (for initial setup or administration):
-   - Use the `/api/add_trusted_key` endpoint to add trusted public keys
-   - Example: `curl -X POST http://localhost:5000/api/add_trusted_key -H 'Content-Type: application/json' -d '{"public_key": "YOUR_PUBLIC_KEY_HERE"}'`
+    - Use the `/api/add_trusted_key` endpoint to add trusted public keys
+    - Example: `curl -X POST http://localhost:5000/api/add_trusted_key -H 'Content-Type: application/json' -d '{"public_key": "YOUR_PUBLIC_KEY_HERE"}'`
 
 ## Running the Application
 
 1. Start the WebSocket server:
-   ```
-   python websocket_server.py
-   ```
+    ```
+    python websocket_server.py
+    ```
 
 2. Start the frontend server:
-   ```
-   cd frontend
-   python -m http.server 8000
-   ```
+    ```
+    cd frontend
+    python -m http.server 8000
+    ```
 
 3. Access the application at http://localhost:8000
 
@@ -140,8 +140,6 @@ For questions, suggestions, or support, please open an issue on GitHub.
 
 ## How LodeStar Works: A Decentralized Truth Network
 
-## How LodeStar Works: A Decentralized Truth Network
-
 ```mermaid
 graph TD
     A[Volunteer Crawler] -->|Collects data from<br>YouTube, Twitter, etc.| B[Signs data with private key]
@@ -167,32 +165,6 @@ graph TD
     style K fill:#800000,stroke:#a00000,color:#ffffff
     style L fill:#003366,stroke:#0055aa,color:#ffffff
     style M fill:#003366,stroke:#0055aa,color:#ffffff
-```
-```mermaid
-graph TD
-    A[Volunteer Crawler] -->|Collects data from<br>YouTube, Twitter, etc.| B[Signs data with private key]
-    B -->|Stores signed data on IPFS| C[IPFS Network]
-    C -->|Retrieves data| G[Frontend Website]
-    G[Frontend Website] -->|Verifies signature using WebCrypto and trusted keys from /api/trusted_keys| G[Frontend Website]
-    G -->|Broadcasts verified content| H[Informed Citizens]
-    G -->|Users submit flags| I[Flagging Service]
-    I -->|Moderators review| J[Moderation Queue]
-    J -->|Approve/reject flags| K[Update Verification Status]
-    K --> G
-    G -->|Users can opt in to contribute| L[Lightweight Browser Crawler]
-    L -->|Runs in browser| M[Contributes to verification]
-    M --> C
-    
-    style A fill:#e0f7fa,stroke:#0097a7
-    style B fill:#e0f7fa,stroke:#0097a7
-    style C fill:#e3f2fd,stroke:#1565c0
-    style G fill:#fce4ec,stroke:#c2185b
-    style H fill:#f0f4c3,stroke:#7cb342
-    style I fill:#fff3e0,stroke:#ff6e40
-    style J fill:#fff3e0,stroke:#ff6e40
-    style K fill:#fff3e0,stroke:#ff6e40
-    style L fill:#e0f7fa,stroke:#0097a7
-    style M fill:#e0f7fa,stroke:#0097a7
 ```
 
 ## Why LodeStar Cannot Be Taken Down
