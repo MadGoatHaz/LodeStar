@@ -1,6 +1,8 @@
 from flask import Flask, request, jsonify
 from flask_socketio import SocketIO
 from verifier import DataVerifier
+from distributed_network import DistributedNetwork
+from hybrid_processing import HybridProcessingEngine
 from websocket_server import WebSocketServer, integrate_with_api
 from flagging_service import FlaggingService
 from search_api import SearchAPI
@@ -29,6 +31,12 @@ historical_api.init_app(app)
 
 # Initialize Volunteer Dashboard API
 volunteer_api = VolunteerDashboardAPI(app)
+
+# Initialize Distributed Network
+distributed_network = DistributedNetwork()
+
+# Initialize Hybrid Processing Engine
+hybrid_processing = HybridProcessingEngine(distributed_network=distributed_network)
 
 # Start WebSocket server in a separate thread
 def start_websocket_server():
@@ -104,6 +112,15 @@ def system_status():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/trusted_keys')
+def get_trusted_keys():
+    """Get list of trusted public keys"""
+    try:
+        return jsonify({
+            'keys': [key.decode('utf-8') for key in verifier.trusted_keys]
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 # Flagging API endpoints
 @app.route('/api/flag', methods=['POST'])
 def submit_flag():
@@ -182,4 +199,17 @@ def update_flag_status():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
+    # Start distributed network
+    import asyncio
+    async def start_network():
+        await distributed_network.start_network()
+    
+    # Start hybrid processing engine
+    hybrid_processing.start_engine()
+    
+    # Run Flask app
     app.run(host='0.0.0.0', port=5000, debug=True)
+    
+    # Stop resources when app exits
+    hybrid_processing.stop_engine()
+    asyncio.run(distributed_network.stop_network())
